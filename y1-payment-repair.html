@@ -6,7 +6,7 @@
 <title>Payment Repair, Rebuilt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@800&display=swap">
 <style>
   /* Single dark look: a fixed 16:9 "screen" with captions and controls below it. */
   :root {
@@ -28,8 +28,10 @@
   .stage { position: absolute; left: 0; top: 0; width: 960px; height: 540px; transform-origin: 0 0; }
   .scene { position: absolute; inset: 0; visibility: hidden; }
   .abs { position: absolute; }
-  /* Logo slot: drop the official file at assets/logo.svg (or .png); it is shown in white. */
-  .brand { position: absolute; left: 32px; top: 22px; height: 28px; width: auto; filter: brightness(0) invert(1); }
+  /* BNY wordmark: Inter ExtraBold, white, wide tracking. */
+  .brand { position: absolute; left: 32px; top: 18px; font: 800 26px/1 "Inter", "Segoe UI", Arial, sans-serif; letter-spacing: .18em; color: #fff; }
+  /* The official logo file, when present at assets/bny-logo.png, replaces the text and is drawn in white. */
+  .brand-img { position: absolute; left: 32px; top: 16px; height: 30px; width: auto; filter: brightness(0) invert(1); }
   .tag { position: absolute; right: 32px; top: 26px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .tag b { color: var(--accent); font-weight: 600; margin-right: 8px; }
 
@@ -127,7 +129,8 @@
 
   <div class="stage-wrap" id="wrap" role="img" aria-label="Animation of payment validation and repair, before and after a digital employee. The narration is shown as captions below.">
     <div class="stage" id="stage">
-      <img class="brand" src="assets/logo.svg" alt="BNY" onerror="this.hidden = true">
+      <div class="brand" id="brand">BNY</div>
+      <img class="brand-img" src="assets/bny-logo.png" alt="BNY" hidden onload="this.hidden = false; document.getElementById('brand').hidden = true" onerror="this.remove()">
 
       <!-- Scene 1: Payments arrive -->
       <section class="scene" id="s1">
@@ -246,7 +249,9 @@
 <script>
 const SCENES = [
   { id: "s1", start: 0,  end: 10, title: "Payments arrive",
-    text: "Every day, thousands of payments move through BNY's treasury services. Most pass straight through. But some stop: a wrong country code, an incomplete address, a bank code that doesn't match." },
+    text: "Every day, thousands of payments move through BNY's treasury services. Most pass straight through. But some stop: a wrong country code, an incomplete address, a bank code that doesn't match.",
+    // Spoken variant for text-to-speech, where the written form would be mispronounced.
+    say: "Every day, thousands of payments move through B N Y's treasury services. Most pass straight through. But some stop: a wrong country code, an incomplete address, a bank code that doesn't match." },
   { id: "s2", start: 10, end: 22, title: "Before · manual repair",
     text: "Until recently, an analyst fixed each one by hand: looking up the beneficiary, correcting the field, re-checking the details. Five or six minutes a payment, while the queue kept growing." },
   { id: "s3", start: 22, end: 38, title: "After · the digital employee",
@@ -257,6 +262,7 @@ const SCENES = [
     text: "And the analyst's job changes too: from repairing payments to supervising the agent that does. Watching its volumes, its cycle times and its misses, and deciding what it should learn next." },
 ];
 const TOTAL = 60;
+const FADE = 0.4; // scene cross-fade length
 
 gsap.defaults({ duration: 0.5, ease: "power2.out" });
 
@@ -383,9 +389,9 @@ const master = gsap.timeline({ paused: true, repeat: -1, onUpdate: sync, onRepea
 SCENES.forEach((s, i) => {
   const el = document.getElementById(s.id);
   master.addLabel(s.id, s.start)
-    .fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, s.start)
+    .fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: FADE }, s.start)
     .add(builders[i](el), s.start + 0.2)
-    .to(el, { autoAlpha: 0, duration: 0.4 }, s.end - 0.4);
+    .to(el, { autoAlpha: 0, duration: FADE }, s.end - FADE);
 });
 master.set({}, {}, TOTAL);
 
@@ -461,6 +467,8 @@ if (EXPORT) {
   fit();
   window.__exporter = {
     duration: TOTAL,
+    fade: FADE,
+    scenes: SCENES.map(({ id, start, end, text, say }) => ({ id, start, end, say: say ?? text })),
     ready: document.fonts.ready.then(() => fit()),
     renderAt: (t) => void master.seek(t, false), // return nothing: the timeline object is not serializable
   };

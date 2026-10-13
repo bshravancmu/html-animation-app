@@ -16,11 +16,26 @@ npx playwright install chromium   # first time only
 npm run export:video              # writes exports/y1-payment-repair.mp4 (1920x1080, 30 fps, H.264)
 ```
 
-Options: `--page <file.html>`, `--out <file.mp4>`, `--fps 60`, `--width 3840 --height 2160` (the stage is vector, so 4K stays sharp), `--audio narration.mp3` (adds a recorded voiceover as AAC), and `--ffmpeg <path>`. The script looks for ffmpeg in this order: `--ffmpeg`, the `ffmpeg-static` package (installed automatically on Windows, macOS and Linux), then `ffmpeg` on your PATH. A full 60-second export takes about two to three minutes.
+Options: `--page <file.html>`, `--out <file.mp4>`, `--fps 60`, `--width 3840 --height 2160` (the stage is vector, so 4K stays sharp), and `--ffmpeg <path>`. The script looks for ffmpeg in this order: `--ffmpeg`, the `ffmpeg-static` package (installed automatically on Windows, macOS and Linux), then `ffmpeg` on your PATH. A full 60-second export takes about two to three minutes.
+
+### Narration
+
+`--narrate` generates a voiceover from each scene's narration with [Piper](https://github.com/rhasspy/piper), a free text-to-speech engine that runs offline, and mixes it into the video:
+
+```sh
+pip install piper-tts
+# Download a voice: both en_US-lessac-medium.onnx and en_US-lessac-medium.onnx.json from
+# https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US/lessac/medium into voices/
+npm run export:video -- --narrate
+```
+
+The voice drives the timing. Each line starts 0.4 s into its scene. When a line runs longer than its scene, the scene's last frame is held until the line ends, so the voice is never sped up or cut off. The 60-second animation becomes a video of about 65 seconds. Use `--voice <model.onnx>` for another voice and `--piper <path>` if `piper` isn't on your PATH. Check a voice's licence in its model card before using it outside the study.
+
+To use a recorded voiceover instead, pass `--audio narration.mp3`.
 
 ### Logo
 
-Put the logo file at `assets/logo.svg`. It is drawn in white in the top-left of the stage, so it also appears in exported videos. The slot stays empty until the file is there. See `assets/README.md`.
+The stage shows the BNY wordmark top-left in white: "BNY" set in Inter ExtraBold with wide letter spacing. To use the official logo file instead, save it as `assets/bny-logo.png`. The page draws it in white and hides the text version. The file needs a transparent background.
 
 ## Agent skills
 
