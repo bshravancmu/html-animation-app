@@ -4,31 +4,40 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Payment Repair, Rebuilt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
 <style>
+  /* Single dark look: a fixed 16:9 "screen" with captions and controls below it. */
   :root {
-    --bg: #0b1220; --panel: #121b2e; --panel-2: #18233a; --line: #24314d;
+    color-scheme: dark;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --bg: #000B14; --panel: #071827; --panel-2: #0c2033; --line: #1b3247;
     --text: #e6ecf5; --muted: #8fa0bd; --accent: #38bdf8; --agent: #a78bfa;
     --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); }
   main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
   h1 { font-size: 20px; margin: 0 0 4px; }
   .sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
 
   /* Stage: fixed 960x540 canvas scaled to fit its wrapper */
-  .stage-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: radial-gradient(ellipse at 30% 20%, #13203a, var(--bg) 70%); }
+  .stage-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
   .stage { position: absolute; left: 0; top: 0; width: 960px; height: 540px; transform-origin: 0 0; }
   .scene { position: absolute; inset: 0; visibility: hidden; }
   .abs { position: absolute; }
-  .tag { position: absolute; left: 32px; top: 24px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  /* Logo slot: drop the official file at assets/logo.svg (or .png); it is shown in white. */
+  .brand { position: absolute; left: 32px; top: 22px; height: 28px; width: auto; filter: brightness(0) invert(1); }
+  .tag { position: absolute; right: 32px; top: 26px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .tag b { color: var(--accent); font-weight: 600; margin-right: 8px; }
 
   .panel { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
   .panel h3 { margin: 0; padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
 
   .pay { position: absolute; width: 380px; height: 46px; padding: 0 14px; display: flex; align-items: center; gap: 12px; background: var(--panel-2); border: 1.5px solid var(--line); border-radius: 10px; font-size: 14px; }
-  .pay .pid { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--muted); font-size: 13px; }
+  .pay .pid { font-family: var(--mono); color: var(--muted); font-size: 13px; }
   .pay .amt { font-weight: 600; }
   .pay .flag, .pay .ok { margin-left: auto; font-size: 12px; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
   .pay .flag { background: rgba(245, 158, 11, .16); color: var(--warn); border: 1px solid rgba(245, 158, 11, .5); }
@@ -44,7 +53,7 @@
   .mini { position: absolute; width: 200px; height: 14px; border-radius: 4px; background: rgba(245, 158, 11, .35); }
   .mini.done { background: rgba(34, 197, 94, .4); width: 150px; }
 
-  .field { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; padding: 10px 12px; border-radius: 8px; background: #0e1628; border: 1px solid var(--line); position: relative; height: 42px; }
+  .field { font-family: var(--mono); font-size: 14px; padding: 10px 12px; border-radius: 8px; background: #03111d; border: 1px solid var(--line); position: relative; height: 42px; }
   .field .v { position: absolute; left: 12px; top: 10px; white-space: nowrap; }
   .field .bad-v { color: var(--warn); }
   .field .good-v { color: var(--ok); }
@@ -79,7 +88,7 @@
   .tile .k { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
   .bars { position: absolute; left: 18px; right: 18px; bottom: 16px; height: 50px; display: flex; align-items: flex-end; gap: 6px; }
   .bars i { flex: 1; background: var(--agent); border-radius: 3px 3px 0 0; transform-origin: bottom; }
-  .endcard { position: absolute; inset: 0; background: rgba(8, 13, 25, .94); display: grid; place-content: center; text-align: center; gap: 10px; }
+  .endcard { position: absolute; inset: 0; background: rgba(0, 11, 20, .95); display: grid; place-content: center; text-align: center; gap: 10px; }
   .endcard .y { font-size: 16px; color: var(--accent); letter-spacing: .1em; text-transform: uppercase; }
   .endcard .t { font-size: 34px; font-weight: 700; }
   .endcard .e { font-size: 24px; color: var(--ok); }
@@ -90,6 +99,7 @@
   .caption .st { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
   .caption p { margin: 4px 0 0; font-size: 17px; }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   button { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button[aria-pressed="true"] { background: var(--accent); color: #04121c; border-color: var(--accent); }
@@ -98,6 +108,11 @@
   label { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
   .sources { margin-top: 20px; color: var(--muted); font-size: 13px; }
   .sources a { color: var(--accent); }
+
+  /* Export mode (#export): only the stage, filling the viewport, for frame-by-frame video capture */
+  html.export main > :not(.stage-wrap) { display: none; }
+  html.export main { max-width: none; padding: 0; }
+  html.export .stage-wrap { border: 0; border-radius: 0; }
 </style>
 </head>
 <body>
@@ -107,11 +122,12 @@
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-person" viewBox="0 0 48 48"><circle cx="24" cy="15" r="9"/><path d="M7 45c0-10 7.5-17 17-17s17 7 17 17z"/></symbol>
-    <symbol id="i-agent" viewBox="0 0 48 48"><rect x="6" y="13" width="36" height="28" rx="9"/><circle cx="18" cy="27" r="4" fill="#0b1220"/><circle cx="30" cy="27" r="4" fill="#0b1220"/><rect x="22" y="3" width="4" height="10" rx="2"/></symbol>
+    <symbol id="i-agent" viewBox="0 0 48 48"><rect x="6" y="13" width="36" height="28" rx="9"/><circle cx="18" cy="27" r="4" fill="#000B14"/><circle cx="30" cy="27" r="4" fill="#000B14"/><rect x="22" y="3" width="4" height="10" rx="2"/></symbol>
   </svg>
 
   <div class="stage-wrap" id="wrap" role="img" aria-label="Animation of payment validation and repair, before and after a digital employee. The narration is shown as captions below.">
     <div class="stage" id="stage">
+      <img class="brand" src="assets/logo.svg" alt="BNY" onerror="this.hidden = true">
 
       <!-- Scene 1: Payments arrive -->
       <section class="scene" id="s1">
@@ -136,7 +152,7 @@
         <div class="panel" style="left:330px;top:70px;width:590px;height:420px"><h3>Analyst workbench</h3></div>
         <div class="who analyst" id="s2-analyst" style="left:360px;top:125px"><svg class="icon"><use href="#i-person"/></svg><span>Analyst</span></div>
         <div class="abs" id="s2-card" style="left:460px;top:125px;width:430px;display:grid;gap:10px">
-          <div style="display:flex;justify-content:space-between;font-size:14px"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted)">PMT-40214 · EUR 22,700</span><span style="color:var(--warn)">Incomplete address</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px"><span style="font-family:var(--mono);color:var(--muted)">PMT-40214 · EUR 22,700</span><span style="color:var(--warn)">Incomplete address</span></div>
           <div class="field"><span class="v bad-v" id="s2-bad">Beneficiary: 14 Rue de ____</span><span class="v good-v" id="s2-good">Beneficiary: 14 Rue de Rivoli, 75001 Paris</span></div>
         </div>
         <ul class="steps abs" id="s2-steps" style="left:460px;top:250px">
@@ -177,7 +193,7 @@
         <div class="lane" style="top:260px;border-color:#3a4a6e"><span class="lbl">Human review</span></div>
         <div class="who agent" style="left:60px;top:105px"><svg class="icon"><use href="#i-agent"/></svg></div>
         <div class="bigcard" id="s4-card">
-          <div style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted);font-size:13px">PMT-40377 · large value</div>
+          <div style="font-family:var(--mono);color:var(--muted);font-size:13px">PMT-40377 · large value</div>
           <div class="amt">USD 48,500,000</div>
           <span class="rtag" id="s4-tag">Needs review</span>
         </div>
@@ -226,7 +242,7 @@
   </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
 <script>
 const SCENES = [
   { id: "s1", start: 0,  end: 10, title: "Payments arrive",
@@ -263,7 +279,7 @@ function scene1(el) {
     .fromTo($$(".ok, .flag", el), { autoAlpha: 0 }, { autoAlpha: 0, duration: 0.01 }, 0)
     .to(good.map((c) => $(".ok", c)), { autoAlpha: 1, stagger: 0.25 }, 3.2)
     .fromTo(good, { x: 0, autoAlpha: 1 }, { x: 140, autoAlpha: 0, duration: 0.7, stagger: 0.2, ease: "power2.in" }, 4.4)
-    .fromTo(bad, { borderColor: "#24314d", backgroundColor: "#18233a" }, { borderColor: "#f59e0b", backgroundColor: "#261d0e", stagger: 0.45 }, 5.2)
+    .fromTo(bad, { borderColor: "#1b3247", backgroundColor: "#0c2033" }, { borderColor: "#f59e0b", backgroundColor: "#261d0e", stagger: 0.45 }, 5.2)
     .to(bad.map((c) => $(".flag", c)), { autoAlpha: 1, stagger: 0.45 }, 5.3)
     .fromTo("#s1-note", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0 }, 7.4);
   return tl;
@@ -332,7 +348,7 @@ function scene3(el) {
 function scene4(el) {
   const tl = gsap.timeline();
   tl.fromTo($$(".lane, .who.agent", el), { autoAlpha: 0 }, { autoAlpha: 1, stagger: 0.15 }, 0)
-    .fromTo("#s4-card", { x: -120, y: 0, autoAlpha: 0, borderColor: "#24314d" }, { x: 0, autoAlpha: 1, duration: 0.8 }, 0.6)
+    .fromTo("#s4-card", { x: -120, y: 0, autoAlpha: 0, borderColor: "#1b3247" }, { x: 0, autoAlpha: 1, duration: 0.8 }, 0.6)
     .fromTo("#s4-tag", { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, ease: "back.out(3)" }, 2.6)
     .to("#s4-card", { borderColor: "#ef4444", duration: 0.3 }, 2.6)
     .to("#s4-card", { y: 190, duration: 0.9, ease: "power3.inOut" }, 3.6)
@@ -438,8 +454,20 @@ $("#restart").addEventListener("click", () => { seek(0); setPlaying(true); });
 scrub.addEventListener("input", () => seek((scrub.value / 1000) * TOTAL));
 voice.addEventListener("change", () => speak(lastScene));
 
+// Export mode: no playback; tools/export-video.mjs drives the timeline one frame at a time.
+const EXPORT = location.hash === "#export";
+if (EXPORT) {
+  document.documentElement.classList.add("export");
+  fit();
+  window.__exporter = {
+    duration: TOTAL,
+    ready: document.fonts.ready.then(() => fit()),
+    renderAt: (t) => void master.seek(t, false), // return nothing: the timeline object is not serializable
+  };
+}
+
 seek(0);
-if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(true);
+if (!EXPORT && !matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(true);
 </script>
 </body>
 </html>
