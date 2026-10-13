@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment Repair, Rebuilt</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b2e; --panel-2: #18233a; --line: #24314d;
+    --text: #e6ecf5; --muted: #8fa0bd; --accent: #38bdf8; --agent: #a78bfa;
+    --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+
+  /* Stage: fixed 960x540 canvas scaled to fit its wrapper */
+  .stage-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: radial-gradient(ellipse at 30% 20%, #13203a, var(--bg) 70%); }
+  .stage { position: absolute; left: 0; top: 0; width: 960px; height: 540px; transform-origin: 0 0; }
+  .scene { position: absolute; inset: 0; visibility: hidden; }
+  .abs { position: absolute; }
+  .tag { position: absolute; left: 32px; top: 24px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .tag b { color: var(--accent); font-weight: 600; margin-right: 8px; }
+
+  .panel { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .panel h3 { margin: 0; padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+
+  .pay { position: absolute; width: 380px; height: 46px; padding: 0 14px; display: flex; align-items: center; gap: 12px; background: var(--panel-2); border: 1.5px solid var(--line); border-radius: 10px; font-size: 14px; }
+  .pay .pid { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--muted); font-size: 13px; }
+  .pay .amt { font-weight: 600; }
+  .pay .flag, .pay .ok { margin-left: auto; font-size: 12px; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .pay .flag { background: rgba(245, 158, 11, .16); color: var(--warn); border: 1px solid rgba(245, 158, 11, .5); }
+  .pay .ok { background: rgba(34, 197, 94, .14); color: var(--ok); }
+
+  .icon { width: 64px; height: 64px; fill: currentColor; }
+  .who { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+  .who.analyst { color: var(--accent); }
+  .who.agent { color: var(--agent); }
+  .who span { color: var(--muted); }
+
+  .big { font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .mini { position: absolute; width: 200px; height: 14px; border-radius: 4px; background: rgba(245, 158, 11, .35); }
+  .mini.done { background: rgba(34, 197, 94, .4); width: 150px; }
+
+  .field { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; padding: 10px 12px; border-radius: 8px; background: #0e1628; border: 1px solid var(--line); position: relative; height: 42px; }
+  .field .v { position: absolute; left: 12px; top: 10px; white-space: nowrap; }
+  .field .bad-v { color: var(--warn); }
+  .field .good-v { color: var(--ok); }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .steps .chk { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 13px; color: transparent; position: relative; }
+  .steps .chk i { position: absolute; inset: -1.5px; border-radius: 50%; background: var(--ok); color: #06210f; display: grid; place-items: center; font-style: normal; font-weight: 700; opacity: 0; }
+
+  .pill { position: absolute; width: 170px; height: 38px; border-radius: 99px; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 13px; color: var(--muted); overflow: hidden; }
+  .pill .lit { position: absolute; inset: 0; background: var(--agent); color: #160b33; display: grid; place-items: center; font-weight: 600; opacity: 0; }
+
+  .wcard { position: absolute; left: 300px; top: 300px; width: 360px; padding: 12px 14px; background: var(--panel-2); border: 1.5px solid var(--warn); border-radius: 12px; display: grid; gap: 8px; }
+  .wcard .head { display: flex; justify-content: space-between; font-size: 13px; }
+  .ctime { position: absolute; left: 700px; top: 318px; width: 160px; text-align: center; }
+  .ctime .t { position: absolute; left: 0; right: 0; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ok); }
+  .ctime small { position: absolute; top: 46px; left: 0; right: 0; color: var(--muted); font-size: 12px; }
+
+  .lane { position: absolute; left: 40px; width: 880px; height: 150px; border: 1.5px dashed var(--line); border-radius: 14px; }
+  .lane .lbl { position: absolute; left: 16px; top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .bigcard { position: absolute; left: 150px; top: 112px; width: 360px; padding: 14px 16px; background: var(--panel-2); border: 1.5px solid var(--line); border-radius: 12px; }
+  .bigcard .amt { font-size: 26px; font-weight: 700; }
+  .rtag { position: absolute; right: -14px; top: -14px; background: var(--bad); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
+  .notes { position: absolute; left: 530px; top: 300px; width: 250px; padding: 12px 14px; background: #1b1838; border: 1px solid #3b3370; border-radius: 12px; font-size: 13px; }
+  .notes b { color: var(--agent); display: block; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .notes div { color: var(--text); }
+  .approve { position: absolute; left: 800px; top: 452px; width: 110px; height: 40px; border-radius: 10px; background: var(--ok); color: #06210f; font-weight: 700; display: grid; place-items: center; }
+  .cursor { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 6px rgba(255, 255, 255, .2); }
+  .stamp { position: absolute; left: 400px; top: 280px; background: var(--bg); border: 3px solid var(--ok); color: var(--ok); font-weight: 800; font-size: 16px; letter-spacing: .12em; padding: 4px 14px; border-radius: 8px; }
+
+  .tile { position: absolute; top: 150px; width: 270px; height: 190px; padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .tile .k { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .bars { position: absolute; left: 18px; right: 18px; bottom: 16px; height: 50px; display: flex; align-items: flex-end; gap: 6px; }
+  .bars i { flex: 1; background: var(--agent); border-radius: 3px 3px 0 0; transform-origin: bottom; }
+  .endcard { position: absolute; inset: 0; background: rgba(8, 13, 25, .94); display: grid; place-content: center; text-align: center; gap: 10px; }
+  .endcard .y { font-size: 16px; color: var(--accent); letter-spacing: .1em; text-transform: uppercase; }
+  .endcard .t { font-size: 34px; font-weight: 700; }
+  .endcard .e { font-size: 24px; color: var(--ok); }
+  .endcard small { color: var(--muted); font-size: 12px; }
+
+  /* Captions and controls */
+  .caption { margin-top: 12px; padding: 14px 16px; min-height: 92px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .caption .st { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+  .caption p { margin: 4px 0 0; font-size: 17px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+  button { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button[aria-pressed="true"] { background: var(--accent); color: #04121c; border-color: var(--accent); }
+  input[type=range] { flex: 1 1 200px; accent-color: var(--accent); }
+  .time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; min-width: 84px; }
+  label { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .sources { margin-top: 20px; color: var(--muted); font-size: 13px; }
+  .sources a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Payment repair, rebuilt</h1>
+  <p class="sub">Y1 · Payment validation and repair (Payments and Trade / Treasury Services) · CMU CSL AI and role change study</p>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-person" viewBox="0 0 48 48"><circle cx="24" cy="15" r="9"/><path d="M7 45c0-10 7.5-17 17-17s17 7 17 17z"/></symbol>
+    <symbol id="i-agent" viewBox="0 0 48 48"><rect x="6" y="13" width="36" height="28" rx="9"/><circle cx="18" cy="27" r="4" fill="#0b1220"/><circle cx="30" cy="27" r="4" fill="#0b1220"/><rect x="22" y="3" width="4" height="10" rx="2"/></symbol>
+  </svg>
+
+  <div class="stage-wrap" id="wrap" role="img" aria-label="Animation of payment validation and repair, before and after a digital employee. The narration is shown as captions below.">
+    <div class="stage" id="stage">
+
+      <!-- Scene 1: Payments arrive -->
+      <section class="scene" id="s1">
+        <div class="tag"><b>1</b>Payments arrive</div>
+        <div class="panel" style="left:500px;top:70px;width:420px;height:420px"><h3>Validation queue</h3></div>
+        <div class="abs" id="s1-in" style="left:40px;top:255px;color:var(--muted);font-size:14px">Payment messages&nbsp;→</div>
+        <div class="pay is-good" style="left:520px;top:130px"><span class="pid">PMT-40211</span><span class="amt">USD 12,400</span><span class="ok">✓ Passed</span></div>
+        <div class="pay is-bad" style="left:520px;top:186px"><span class="pid">PMT-40212</span><span class="amt">EUR 8,900</span><span class="flag">Invalid country code</span></div>
+        <div class="pay is-good" style="left:520px;top:242px"><span class="pid">PMT-40213</span><span class="amt">GBP 3,150</span><span class="ok">✓ Passed</span></div>
+        <div class="pay is-bad" style="left:520px;top:298px"><span class="pid">PMT-40214</span><span class="amt">EUR 22,700</span><span class="flag">Incomplete address</span></div>
+        <div class="pay is-good" style="left:520px;top:354px"><span class="pid">PMT-40215</span><span class="amt">USD 940</span><span class="ok">✓ Passed</span></div>
+        <div class="pay is-bad" style="left:520px;top:410px"><span class="pid">PMT-40216</span><span class="amt">JPY 1.2M</span><span class="flag">Invalid BIC</span></div>
+        <div class="abs" id="s1-note" style="left:40px;top:420px;color:var(--warn);font-size:18px;font-weight:600">3 stopped for repair</div>
+      </section>
+
+      <!-- Scene 2: Before, manual repair -->
+      <section class="scene" id="s2">
+        <div class="tag"><b>2</b>Before · manual repair</div>
+        <div class="panel" style="left:40px;top:70px;width:260px;height:420px"><h3>Waiting in queue</h3></div>
+        <div class="abs big" id="s2-q" style="left:60px;top:125px;color:var(--warn)">3</div>
+        <div id="s2-minis"></div>
+        <div class="panel" style="left:330px;top:70px;width:590px;height:420px"><h3>Analyst workbench</h3></div>
+        <div class="who analyst" id="s2-analyst" style="left:360px;top:125px"><svg class="icon"><use href="#i-person"/></svg><span>Analyst</span></div>
+        <div class="abs" id="s2-card" style="left:460px;top:125px;width:430px;display:grid;gap:10px">
+          <div style="display:flex;justify-content:space-between;font-size:14px"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted)">PMT-40214 · EUR 22,700</span><span style="color:var(--warn)">Incomplete address</span></div>
+          <div class="field"><span class="v bad-v" id="s2-bad">Beneficiary: 14 Rue de ____</span><span class="v good-v" id="s2-good">Beneficiary: 14 Rue de Rivoli, 75001 Paris</span></div>
+        </div>
+        <ul class="steps abs" id="s2-steps" style="left:460px;top:250px">
+          <li><span class="chk"><i>✓</i></span>Look up the beneficiary</li>
+          <li><span class="chk"><i>✓</i></span>Correct the field</li>
+          <li><span class="chk"><i>✓</i></span>Re-check the details</li>
+        </ul>
+        <div class="abs" style="left:740px;top:250px;text-align:right">
+          <div class="big" id="s2-timer">0:00</div>
+          <div style="color:var(--muted);font-size:12px;margin-top:6px">time on this payment</div>
+        </div>
+      </section>
+
+      <!-- Scene 3: After, the digital employee -->
+      <section class="scene" id="s3">
+        <div class="tag"><b>3</b>After · the digital employee</div>
+        <div class="who agent" id="s3-agent" style="left:448px;top:70px"><svg class="icon"><use href="#i-agent"/></svg><span>Digital employee</span></div>
+        <div class="pill" style="left:200px;top:190px">Reference data<span class="lit">✓ Reference data</span></div>
+        <div class="pill" style="left:395px;top:190px">Mapping service<span class="lit">✓ Mapping service</span></div>
+        <div class="pill" style="left:590px;top:190px">Release<span class="lit">✓ Released</span></div>
+        <div class="abs" style="left:40px;top:300px;color:var(--muted);font-size:13px;width:200px">Flagged payments</div>
+        <div class="mini s3-flag" style="left:40px;top:330px"></div><div class="mini s3-flag" style="left:40px;top:352px"></div><div class="mini s3-flag" style="left:40px;top:374px"></div>
+        <div class="abs" style="left:770px;top:410px;color:var(--muted);font-size:13px">Released</div>
+        <div class="abs big" id="s3-rel" style="left:770px;top:440px;font-size:34px;color:var(--ok)">0</div>
+        <div class="wcard"><div class="head"><span class="pid">PMT-40212 · EUR 8,900</span><span style="color:var(--warn)">Invalid country code</span></div>
+          <div class="field"><span class="v bad-v">Country: XD</span><span class="v good-v">Country: DE ✓</span></div></div>
+        <div class="wcard"><div class="head"><span class="pid">PMT-40214 · EUR 22,700</span><span style="color:var(--warn)">Incomplete address</span></div>
+          <div class="field"><span class="v bad-v">Address: 14 Rue de ____</span><span class="v good-v">Address: 14 Rue de Rivoli ✓</span></div></div>
+        <div class="wcard"><div class="head"><span class="pid">PMT-40216 · JPY 1.2M</span><span style="color:var(--warn)">Invalid BIC</span></div>
+          <div class="field"><span class="v bad-v">BIC: MHCBJPJ</span><span class="v good-v">BIC: MHCBJPJT ✓</span></div></div>
+        <div class="ctime"><span class="t">0:00</span><span class="t">0:00</span><span class="t">0:00</span><small>cycle time · under 0:30</small></div>
+      </section>
+
+      <!-- Scene 4: The handoff -->
+      <section class="scene" id="s4">
+        <div class="tag"><b>4</b>The handoff</div>
+        <div class="lane" style="top:70px"><span class="lbl">Agent lane · auto-release</span></div>
+        <div class="lane" style="top:260px;border-color:#3a4a6e"><span class="lbl">Human review</span></div>
+        <div class="who agent" style="left:60px;top:105px"><svg class="icon"><use href="#i-agent"/></svg></div>
+        <div class="bigcard" id="s4-card">
+          <div style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted);font-size:13px">PMT-40377 · large value</div>
+          <div class="amt">USD 48,500,000</div>
+          <span class="rtag" id="s4-tag">Needs review</span>
+        </div>
+        <div class="notes" id="s4-notes"><b>Agent notes</b><div>✓ BIC verified against reference data</div><div>✓ Address complete</div><div style="color:var(--warn)">! Above auto-release threshold</div></div>
+        <div class="who analyst" id="s4-analyst" style="left:830px;top:290px"><svg class="icon"><use href="#i-person"/></svg><span>Analyst</span></div>
+        <div class="approve" id="s4-btn">Approve</div>
+        <div class="stamp" id="s4-stamp">APPROVED</div>
+        <div class="cursor" id="s4-cursor" style="left:600px;top:500px"></div>
+      </section>
+
+      <!-- Scene 5: The agent-boss view -->
+      <section class="scene" id="s5">
+        <div class="tag"><b>5</b>The agent-boss view</div>
+        <div class="who analyst" id="s5-boss" style="left:40px;top:70px;flex-direction:row;gap:12px"><svg class="icon" style="width:48px;height:48px"><use href="#i-person"/></svg><span style="color:var(--text);font-size:16px">Analyst → agent supervisor</span></div>
+        <div class="tile" style="left:40px"><div class="k">Cleared by agent</div><div class="big" id="s5-c1" style="color:var(--ok)">0</div>
+          <div class="bars"><i style="height:40%"></i><i style="height:55%"></i><i style="height:50%"></i><i style="height:70%"></i><i style="height:65%"></i><i style="height:85%"></i><i style="height:100%"></i></div></div>
+        <div class="tile" style="left:345px"><div class="k">Escalated to human</div><div class="big" id="s5-c2" style="color:var(--warn)">0</div>
+          <div style="margin-top:22px;color:var(--muted);font-size:13px">Misses to review: <span id="s5-c4" style="color:var(--text);font-weight:600">0</span><br>→ decide what it learns next</div></div>
+        <div class="tile" style="left:650px"><div class="k">Average cycle time</div><div class="big" id="s5-c3" style="color:var(--accent)">5:30</div>
+          <div style="margin-top:22px;color:var(--muted);font-size:13px">was 5:30 per payment by hand</div></div>
+        <div class="abs" style="left:40px;top:362px;color:var(--muted);font-size:12px">Illustrative numbers for the animation.</div>
+        <div class="endcard" id="s5-end">
+          <div class="y">Y1</div>
+          <div class="t">Payment validation and repair</div>
+          <div class="e">Est. 60–80% of hours addressable</div>
+          <small>Team analytical estimate, not BNY data.</small>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <div class="caption" aria-live="polite"><div class="st" id="cap-title"></div><p id="cap-text"></p></div>
+
+  <div class="controls">
+    <button id="play" aria-pressed="false">▶ Play</button>
+    <button id="restart">↺ Restart</button>
+    <span id="chips"></span>
+    <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Seek">
+    <span class="time" id="time">0:00 / 1:00</span>
+    <label><input type="checkbox" id="voice"> Read narration aloud</label>
+  </div>
+
+  <div class="sources">
+    Sources: "Five or six minutes" and "under thirty seconds" from <a href="https://www.microsoft.com/en-us/worklab/the-making-of-a-frontier-firm-how-ai-is-redesigning-work-at-bny">Microsoft WorkLab, May 2026</a>, as cited in <code>BNY-Ops-AI-Opportunity-Matrix.md</code> row Y1. Supervisor dashboard from <code>Operations-Task-Inventory-v3.md</code>, tasks 337 and 357. Script: <code>BNY-Ops-Y1-Payment-Repair-Audio-Script.md</code>.
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script>
+const SCENES = [
+  { id: "s1", start: 0,  end: 10, title: "Payments arrive",
+    text: "Every day, thousands of payments move through BNY's treasury services. Most pass straight through. But some stop: a wrong country code, an incomplete address, a bank code that doesn't match." },
+  { id: "s2", start: 10, end: 22, title: "Before · manual repair",
+    text: "Until recently, an analyst fixed each one by hand: looking up the beneficiary, correcting the field, re-checking the details. Five or six minutes a payment, while the queue kept growing." },
+  { id: "s3", start: 22, end: 38, title: "After · the digital employee",
+    text: "Now a digital employee does the first pass. It checks the address and country code against reference data, calls a mapping service to repair the field, and releases the payment. Validations that took minutes now clear in under thirty seconds." },
+  { id: "s4", start: 38, end: 50, title: "The handoff",
+    text: "Not everything is automated. Large-value payments, and anything the agent can't resolve, go to a person, with the agent's evidence attached. The human makes the call." },
+  { id: "s5", start: 50, end: 60, title: "The agent-boss view",
+    text: "And the analyst's job changes too: from repairing payments to supervising the agent that does. Watching its volumes, its cycle times and its misses, and deciding what it should learn next." },
+];
+const TOTAL = 60;
+
+gsap.defaults({ duration: 0.5, ease: "power2.out" });
+
+const $ = (s, root = document) => root.querySelector(s);
+const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+const mmss = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
+
+// Tween a number shown as text; scrubbing backwards re-renders it correctly.
+function counter(tl, el, from, to, duration, position, format = (v) => Math.round(v).toLocaleString("en-US")) {
+  const o = { v: from };
+  tl.call(() => (el.textContent = format(from)), null, 0); // reset when the loop comes round
+  tl.fromTo(o, { v: from }, { v: to, duration, ease: "none", onUpdate: () => (el.textContent = format(o.v)) }, position);
+}
+
+function scene1(el) {
+  const tl = gsap.timeline();
+  const cards = $$(".pay", el), good = $$(".is-good", el), bad = $$(".is-bad", el);
+  tl.fromTo("#s1-in", { autoAlpha: 0, x: -20 }, { autoAlpha: 1, x: 0 }, 0)
+    .fromTo(cards, { x: -480, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: 0.7, stagger: 0.35 }, 0.2)
+    .fromTo($$(".ok, .flag", el), { autoAlpha: 0 }, { autoAlpha: 0, duration: 0.01 }, 0)
+    .to(good.map((c) => $(".ok", c)), { autoAlpha: 1, stagger: 0.25 }, 3.2)
+    .fromTo(good, { x: 0, autoAlpha: 1 }, { x: 140, autoAlpha: 0, duration: 0.7, stagger: 0.2, ease: "power2.in" }, 4.4)
+    .fromTo(bad, { borderColor: "#24314d", backgroundColor: "#18233a" }, { borderColor: "#f59e0b", backgroundColor: "#261d0e", stagger: 0.45 }, 5.2)
+    .to(bad.map((c) => $(".flag", c)), { autoAlpha: 1, stagger: 0.45 }, 5.3)
+    .fromTo("#s1-note", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0 }, 7.4);
+  return tl;
+}
+
+function scene2(el) {
+  const tl = gsap.timeline();
+  const minis = $("#s2-minis");
+  minis.innerHTML = "";
+  for (let i = 0; i < 14; i++) {
+    const m = document.createElement("div");
+    m.className = "mini";
+    m.style.cssText = `left:70px;top:${460 - i * 20}px`;
+    minis.appendChild(m);
+  }
+  tl.fromTo("#s2-analyst", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0 }, 0)
+    .fromTo("#s2-card", { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0 }, 0.3)
+    .fromTo("#s2-steps", { autoAlpha: 0 }, { autoAlpha: 1 }, 0.6)
+    .fromTo("#s2-good", { autoAlpha: 0 }, { autoAlpha: 1 }, 6.2)
+    .fromTo("#s2-bad", { autoAlpha: 1 }, { autoAlpha: 0 }, 6.2)
+    .fromTo($$("#s2-steps i"), { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, stagger: 3, ease: "back.out(2)" }, 3)
+    .fromTo($$(".mini", minis), { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.3, stagger: 0.75 }, 0.6);
+  counter(tl, $("#s2-timer"), 0, 330, 10.4, 0.8, mmss);
+  counter(tl, $("#s2-q"), 3, 27, 10.8, 0.6);
+  return tl;
+}
+
+function scene3(el) {
+  const tl = gsap.timeline();
+  const pills = $$(".pill .lit", el), cards = $$(".wcard", el), times = $$(".ctime .t", el);
+  const secs = [24, 19, 27];
+  const rel = { v: 0 }, relEl = $("#s3-rel");
+  const showRel = () => (relEl.textContent = Math.round(rel.v));
+  tl.call(() => (relEl.textContent = "0"), null, 0);
+  tl.fromTo("#s3-agent", { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, ease: "back.out(2)" }, 0)
+    .fromTo($$(".pill", el), { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, stagger: 0.15 }, 0.4)
+    .fromTo(".ctime small", { autoAlpha: 0 }, { autoAlpha: 1 }, 1.2);
+
+  let t = 1.4;
+  cards.forEach((card, i) => {
+    const run = gsap.timeline();
+    const bad = $(".bad-v", card), good = $(".good-v", card);
+    run.to($$(".s3-flag", el)[2 - i], { autoAlpha: 0, x: 40, duration: 0.3 }, 0)
+      .fromTo(card, { x: -260, autoAlpha: 0, borderColor: "#f59e0b" }, { x: 0, autoAlpha: 1, duration: 0.5 }, 0)
+      .fromTo(times[i], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 0)
+      .fromTo(pills[0], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.7)
+      .fromTo(pills[1], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 1.5)
+      .fromTo(bad, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.3 }, 1.9)
+      .fromTo(good, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 1.9)
+      .to(card, { borderColor: "#22c55e", duration: 0.3 }, 1.9)
+      .fromTo(pills[2], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 2.6)
+      .to(card, { x: 300, autoAlpha: 0, duration: 0.6, ease: "power2.in" }, 3.0)
+      .to(pills, { autoAlpha: 0, duration: 0.25 }, 3.4)
+      .to(times[i], { autoAlpha: 0, duration: 0.2 }, 3.65);
+    counter(run, times[i], 0, secs[i], 3.0, 0, mmss);
+    // One shared proxy, so the three runs step the same "Released" count in order.
+    if (i === 0) run.fromTo(rel, { v: 0 }, { v: 1, duration: 0.3, ease: "none", onUpdate: showRel }, 3.3);
+    else run.to(rel, { v: i + 1, duration: 0.3, ease: "none", onUpdate: showRel }, 3.3);
+    run.timeScale([1, 1.3, 1.6][i]);
+    tl.add(run, t);
+    t += run.duration() / run.timeScale() + 0.3;
+  });
+  return tl;
+}
+
+function scene4(el) {
+  const tl = gsap.timeline();
+  tl.fromTo($$(".lane, .who.agent", el), { autoAlpha: 0 }, { autoAlpha: 1, stagger: 0.15 }, 0)
+    .fromTo("#s4-card", { x: -120, y: 0, autoAlpha: 0, borderColor: "#24314d" }, { x: 0, autoAlpha: 1, duration: 0.8 }, 0.6)
+    .fromTo("#s4-tag", { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, ease: "back.out(3)" }, 2.6)
+    .to("#s4-card", { borderColor: "#ef4444", duration: 0.3 }, 2.6)
+    .to("#s4-card", { y: 190, duration: 0.9, ease: "power3.inOut" }, 3.6)
+    .fromTo("#s4-notes", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0 }, 4.5)
+    .fromTo("#s4-analyst", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0 }, 5.3)
+    .fromTo("#s4-btn", { autoAlpha: 0 }, { autoAlpha: 1 }, 5.7)
+    .fromTo("#s4-cursor", { autoAlpha: 0, x: 0, y: 0 }, { autoAlpha: 1, duration: 0.3 }, 6.3)
+    .to("#s4-cursor", { x: 272, y: -16, duration: 1, ease: "power2.inOut" }, 6.5)
+    .fromTo("#s4-btn", { scale: 1 }, { scale: 0.9, duration: 0.12, yoyo: true, repeat: 1 }, 7.6)
+    .fromTo("#s4-stamp", { autoAlpha: 0, scale: 1.8, rotation: -12 }, { autoAlpha: 1, scale: 1, rotation: -6, duration: 0.35, ease: "back.out(2)" }, 7.9)
+    .to("#s4-card", { borderColor: "#22c55e", duration: 0.3 }, 7.9)
+    .to("#s4-tag", { autoAlpha: 0, duration: 0.3 }, 7.9);
+  return tl;
+}
+
+function scene5(el) {
+  const tl = gsap.timeline();
+  tl.fromTo("#s5-boss", { autoAlpha: 0, x: -20 }, { autoAlpha: 1, x: 0 }, 0)
+    .fromTo($$(".tile", el), { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, stagger: 0.2 }, 0.3)
+    .fromTo($$(".bars i", el), { scaleY: 0 }, { scaleY: 1, stagger: 0.12, duration: 0.4 }, 1)
+    .fromTo("#s5-end", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 6)
+    .fromTo($$("#s5-end > *"), { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, stagger: 0.25 }, 6.2);
+  counter(tl, $("#s5-c1"), 0, 1284, 3.6, 1);
+  counter(tl, $("#s5-c2"), 0, 37, 3.6, 1);
+  counter(tl, $("#s5-c4"), 0, 4, 3.6, 1);
+  counter(tl, $("#s5-c3"), 330, 26, 3.6, 1, mmss);
+  return tl;
+}
+
+const builders = [scene1, scene2, scene3, scene4, scene5];
+const master = gsap.timeline({ paused: true, repeat: -1, onUpdate: sync, onRepeat: () => (lastScene = -1) });
+SCENES.forEach((s, i) => {
+  const el = document.getElementById(s.id);
+  master.addLabel(s.id, s.start)
+    .fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, s.start)
+    .add(builders[i](el), s.start + 0.2)
+    .to(el, { autoAlpha: 0, duration: 0.4 }, s.end - 0.4);
+});
+master.set({}, {}, TOTAL);
+
+// Scale the 960x540 stage to its wrapper
+const wrap = $("#wrap"), stage = $("#stage");
+const fit = () => gsap.set(stage, { scale: wrap.clientWidth / 960 });
+new ResizeObserver(fit).observe(wrap);
+fit();
+
+// Captions, scrubber, voice
+const playBtn = $("#play"), scrub = $("#scrub"), timeEl = $("#time"), voice = $("#voice");
+const chips = $("#chips");
+SCENES.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.textContent = i + 1;
+  b.title = s.title;
+  b.addEventListener("click", () => goTo(i));
+  chips.appendChild(b);
+});
+const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+if (!synth) voice.parentElement.hidden = true;
+
+let lastScene = -1;
+function sceneAt(t) { return Math.max(0, SCENES.findIndex((s) => t >= s.start && t < s.end)); }
+function sync() {
+  const t = master.time();
+  scrub.value = Math.round((t / TOTAL) * 1000);
+  timeEl.textContent = `${mmss(t)} / ${mmss(TOTAL)}`;
+  const i = sceneAt(t);
+  if (i !== lastScene) {
+    lastScene = i;
+    $("#cap-title").textContent = `Scene ${i + 1} · ${SCENES[i].title}`;
+    $("#cap-text").textContent = SCENES[i].text;
+    [...chips.children].forEach((c, j) => c.setAttribute("aria-pressed", j === i));
+    speak(i);
+  }
+}
+function speak(i) {
+  if (!synth) return;
+  synth.cancel();
+  if (!voice.checked || master.paused()) return;
+  const u = new SpeechSynthesisUtterance(SCENES[i].text);
+  u.rate = 1.05;
+  synth.speak(u);
+}
+function setPlaying(on) {
+  on ? master.play() : master.pause();
+  playBtn.textContent = on ? "❚❚ Pause" : "▶ Play";
+  playBtn.setAttribute("aria-pressed", on);
+  if (!on && synth) synth.cancel();
+  if (on) speak(lastScene);
+}
+// Seek without suppressing callbacks, so counters and captions re-render when scrubbing.
+function seek(t) {
+  master.seek(t, false);
+  sync();
+}
+function goTo(i) {
+  // When paused (or reduced motion), show the scene's finished state; otherwise play from its start.
+  const s = SCENES[i];
+  seek(master.paused() ? s.end - 0.5 : s.start);
+}
+
+playBtn.addEventListener("click", () => setPlaying(master.paused()));
+$("#restart").addEventListener("click", () => { seek(0); setPlaying(true); });
+scrub.addEventListener("input", () => seek((scrub.value / 1000) * TOTAL));
+voice.addEventListener("change", () => speak(lastScene));
+
+seek(0);
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(true);
+</script>
+</body>
+</html>
